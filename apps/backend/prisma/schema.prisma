@@ -19,6 +19,7 @@ model User {
   email String @unique
   password String
   workflows Workflow[]
+  executions Execution[]
 }
 
 model Workflow {
@@ -36,9 +37,11 @@ model Workflow {
 model Execution {
   id String @id @default(uuid())
   workflowId String
+  userId String
   status String
   nodeStates Json
   startedAt DateTime @default(now())
   finishedAt DateTime?
   workflow Workflow @relation(fields: [workflowId] , references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

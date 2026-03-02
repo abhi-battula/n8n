@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { signupSchema, signinSchema, WorkflowSchema, WorkflowType } from "./common/common";
+import { signupSchema, signinSchema, WorkflowSchema, WorkflowType, NodeType, NodeStates } from "./common/common";
 import { prisma } from "./prisma";
 import { authMiddleware } from "./middleware";
 import bcrypt from "bcrypt";
@@ -187,35 +187,76 @@ app.delete<{ id: string }>("/workflow/:id", authMiddleware, async (req, res) => 
   }
 })
 
-// app.post<{id:string}>("/workflow/:id/run",authMiddleware,async (req,res)=>{
-//   const {userId} = req;
-//   const { id } = req.params;
-//   try{
-//     const workflow = await prisma.workflow.findFirst({
-//       where:{
-//         id,
-//         userId
-//       }
-//     })
-//     if(!workflow){
-//       return res.status(404).json({message:"workflow not found"})
-//     }
-//     const nodeStates: Record<string, string> = {}
+app.post<{ id: string }>("/workflow/:id/run", authMiddleware, async (req, res) => {
+  const { userId } = req;
+  const { id } = req.params;
 
-// workflow.nodes.forEach((node: any) => {
-//   nodeStates[node.id] = "pending"
-// })
-//     workflow.nodes
-//     const execution = prisma.execution.create({
-//       data:{
-//         workflowId:id,
-//         status:"running",
-//         nodeStates
-//       }
-//     })
-//   }
-  
-// })
+  try {
+    const workflow = await prisma.workflow.findFirst({
+      where: {
+        id,
+        userId
+      }
+    });
+
+    if (!workflow) {
+      return res.status(404).json({ message: "workflow not found" });
+    }
+
+    // if (!Array.isArray(workflow.nodes)) {
+    //   return res.status(400).json({ message: "Invalid workflow format" });
+    // }
+
+    // check this
+    const workflowNodes = workflow.nodes as unknown as NodeType[];
+
+    const nodeStates: NodeStates = {};
+
+    workflowNodes.forEach((node) => {
+      nodeStates[node.id] = "pending";
+    });
+
+    const execution = await prisma.execution.create({
+      data: {
+        workflowId: id,
+        status: "running",
+        nodeStates
+      }
+    });// use try catch and send error while creating execution msg also , check this end point again 
+    runExecution({ nodes: workflowNodes }, execution.id);
+    return res.status(200).json({ executionId: execution.id });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+app.get<{executionId:string}>("execution/:executionId",authMiddleware,async (req,res)=>{
+  const userId = req.userId!;
+  const {executionId} = req.params;//workflowId
+  const execution = await prisma.execution.findFirst({
+    where: {
+      id:executionId,
+      workflow: { //know why like this 
+          userId
+        }
+    }
+  })
+  if(!execution){
+    return res.status(404).json({message : "execution not found"})
+  }
+  // const {workflowId} = execution;
+  // const workflow = await prisma.workflow.findFirst({
+  //   where:{
+  //     id:workflowId,
+  //     userId
+  //   }
+  // })
+  // if(!workflow){
+  //   return res.status(404).json({message:"error while fetching the workflow"})
+  // }
+  return res.status(200).json({ status: execution.status, nodeStates: execution.nodeStates});
+})
 
 function validateWorkflow(workflow: WorkflowType): { valid: boolean, message?: string } {
   const { nodes, edges } = workflow;
@@ -242,6 +283,67 @@ function validateWorkflow(workflow: WorkflowType): { valid: boolean, message?: s
   }
   return { valid: true };
 }
+
+async function runExecution(
+  workflow: { nodes: NodeType[] },
+  executionId: string
+) {
+  const nodes = workflow.nodes;
+
+  for (const node of nodes) {
+
+    // get current state
+    const execution = await prisma.execution.findUnique({
+      where: { id: executionId }
+    });
+
+    if (!execution) return;
+
+    const currentStates = execution.nodeStates as Record<string, string>;
+
+    // mark running
+    await prisma.execution.update({
+      where: { id: executionId },
+      data: {
+        nodeStates: {
+          ...currentStates,
+          [node.id]: "running"
+        }
+      }
+    });
+
+    await new Promise((res) => setTimeout(res, 1000));
+
+    // get updated state again
+    const updatedExecution = await prisma.execution.findUnique({
+      where: { id: executionId }
+    });
+
+    if (!updatedExecution) return;
+
+    const updatedStates = updatedExecution.nodeStates as Record<string, string>;
+
+    // mark success
+    await prisma.execution.update({
+      where: { id: executionId },
+      data: {
+        nodeStates: {
+          ...updatedStates,
+          [node.id]: "success"
+        }
+      }
+    });
+  }
+
+  await prisma.execution.update({
+    where: { id: executionId },
+    data: {
+      status: "success",
+      finishedAt: new Date()
+    }
+  });
+}
+
 app.listen(3000, () => {
   console.log(" i am listening");
 

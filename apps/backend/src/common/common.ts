@@ -16,7 +16,7 @@ export const signupSchema = zod.object({
 export type Signup = zod.infer<typeof signupSchema>;
 
 type NodeKind = "webhook" | "schedule" | "manual" | "http" | "telegram" | "delay";
-interface NodeType {
+export interface NodeType {
     id: string;
     type:string;
     position: {
@@ -60,3 +60,7 @@ export interface WorkflowType {
         target:  zod.string()
     }))
  }) 
+
+type NodeStatus = "pending" | "running" | "success" | "failed";
+
+export type NodeStates = Record<string, NodeStatus>;
