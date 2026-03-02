@@ -77,18 +77,6 @@ app.post("/signin", async (req, res) => {
 
 })
 
-// These will ALWAYS be required:
-// At least one node
-// Exactly one trigger
-// All edges reference valid nodes
-// No duplicate node IDs
-// No duplicate edge IDs
-// These are not about branching.
-// These are about graph integrity.
-//-----keep all them in one method like check nodeIntegrity() which we can call while creating and updating.
-//------current work , mostly create workflow completed and nodes,edges,workflow types also defined , just copy paste in ui.
-// ----- remainig work , ui , update workflow , get specific work flow, get all workflows , delete work flow.
-
 app.post("/workflow", authMiddleware, async (req, res) => {
   //zod schema
   const userId = req.userId!;
@@ -199,13 +187,43 @@ app.delete<{ id: string }>("/workflow/:id", authMiddleware, async (req, res) => 
   }
 })
 
+// app.post<{id:string}>("/workflow/:id/run",authMiddleware,async (req,res)=>{
+//   const {userId} = req;
+//   const { id } = req.params;
+//   try{
+//     const workflow = await prisma.workflow.findFirst({
+//       where:{
+//         id,
+//         userId
+//       }
+//     })
+//     if(!workflow){
+//       return res.status(404).json({message:"workflow not found"})
+//     }
+//     const nodeStates: Record<string, string> = {}
+
+// workflow.nodes.forEach((node: any) => {
+//   nodeStates[node.id] = "pending"
+// })
+//     workflow.nodes
+//     const execution = prisma.execution.create({
+//       data:{
+//         workflowId:id,
+//         status:"running",
+//         nodeStates
+//       }
+//     })
+//   }
+  
+// })
+
 function validateWorkflow(workflow: WorkflowType): { valid: boolean, message?: string } {
   const { nodes, edges } = workflow;
   // at least one node 
   if (nodes.length == 0) return { valid: false, message: "no nodes present" }
 
   const triggerCount = nodes.filter(n =>
-    ["webhook", "schedule"].includes(n.kind)
+    ["webhook", "schedule", "manual"].includes(n.data.kind)
   ).length;
   if (triggerCount !== 1) return { valid: false, message: "triggers are not valid" }
 

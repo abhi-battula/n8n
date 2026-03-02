@@ -4,7 +4,7 @@ import Home from "./pages/Home"
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import Dashboard from './pages/Dashboard'
-
+import WorkflowEditor from './components/WorkflowEditor'
 function App() {
 
   return (
@@ -14,8 +14,8 @@ function App() {
         <Route path="/signin" element={<Login/>}/>
         <Route path="/signup" element={<Signup/>}/>
         <Route path="/dashboard" element={<Dashboard/>}/>
-        <Route path="/workflow/new" />
-        <Route path="/workflose/:workflowId" />
+        <Route path="/workflow/new"  element={<WorkflowEditor/>} />
+        <Route path="/workflow/:workflowId" element={<WorkflowEditor/>}/>
       </Routes>
     </BrowserRouter>
     

@@ -2,20 +2,11 @@ import { useState } from "react";
 import { LableInput } from "./Lablelnput";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import type { SigninType, SignupType } from "../types/types";
 type AuthType = {
   type: "signin" | "signup"
 }
 
-type SigninType = {
-  email: string;
-  password: string
-}
-
-interface SignupType {
-  name: string;
-  email: string;
-  password: string
-}
 export default function Auth({ type }: AuthType) {
 
   const [signupInput, setSignupInput] = useState<SignupType>({

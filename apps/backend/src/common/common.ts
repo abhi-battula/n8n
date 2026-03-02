@@ -15,15 +15,18 @@ export const signupSchema = zod.object({
 
 export type Signup = zod.infer<typeof signupSchema>;
 
-type NodeKind = "webhook" | "schedule" | "http" | "telegram" | "delay";
+type NodeKind = "webhook" | "schedule" | "manual" | "http" | "telegram" | "delay";
 interface NodeType {
     id: string;
-    kind: NodeKind;
+    type:string;
     position: {
         x: number;
         y: number;
     }
-    data: any;
+    data: {
+        kind: NodeKind;
+        metaData: any;
+    }
 }
 
 interface EdgeType {
@@ -41,12 +44,15 @@ export interface WorkflowType {
     name: zod.string().min(1),
     nodes: zod.array(zod.object({
         id: zod.string(),
-        kind: zod.enum(["webhook","schedule","http","telegram","delay"]),
+        type: zod.string(),
         position: zod.object({
         x: zod.number(),
         y: zod.number(),
         }),
-        data: zod.any()
+        data: zod.object({
+            kind: zod.enum(["webhook","manual","schedule","http","telegram","delay"]),
+            metaData:zod.any()
+        })
     })).min(1),
     edges: zod.array(zod.object({
         id: zod.string(),
